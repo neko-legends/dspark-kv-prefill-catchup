@@ -1,0 +1,48 @@
+{
+  "org": "Neko Legends",
+  "model": "deepseek-v4-flash-0731-ablit-32-32",
+  "weights": "abliterated NVFP4 32-32",
+  "hardware": "4x NVIDIA GB10 DGX Spark, TP=4, switched CX-7 RoCE",
+  "serving": {
+    "max_model_len": 393216,
+    "max_num_seqs": 12,
+    "max_num_batched_tokens": 8264,
+    "max_cudagraph_capture_size": 96,
+    "gpu_memory_utilization": 0.85,
+    "num_speculative_tokens": 7,
+    "draft_sample_method": "probabilistic",
+    "cudagraph_mode": "FULL_DECODE_ONLY",
+    "thinking": false,
+    "override_temperature": 0.0,
+    "kv_cache_tokens": 4793645,
+    "concurrency_at_max_len": 12.19
+  },
+  "protocol": {
+    "prompt": "Fixed short code-generation prompt, 2048 max tokens, temperature 0, concurrency 1, thinking off",
+    "warmup": "several full-length generations before the recorded window",
+    "server_metric": "delta vllm:generation_tokens_total / delta vllm:request_decode_time_seconds_sum",
+    "client_metric": "(completion_tokens-1)/(t_last_text-t_first_text)",
+    "filter": "drop trials where request_success_total increased by more than 1"
+  },
+  "record_engine_window_tok_s": 113.8,
+  "formal_c1_clean": {
+    "n": 7,
+    "server": {
+      "mean": 98.26,
+      "median": 103.37,
+      "sd": 7.86,
+      "min": 84.32,
+      "max": 107.5,
+      "trials": [84.32, 92.33, 92.74, 103.37, 103.42, 104.12, 107.5]
+    },
+    "client_wall": {
+      "mean": 98.21,
+      "median": 103.34,
+      "sd": 7.85,
+      "min": 84.29,
+      "max": 107.39,
+      "trials": [84.29, 92.29, 92.69, 103.34, 103.36, 104.08, 107.39]
+    }
+  },
+  "previous_shape_k5_c1_2048_wall_median": 85.7
+}

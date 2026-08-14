@@ -1,0 +1,9 @@
+.env
+.env.dspark
+.env.dspark.tp4
+*.log
+*.tmp
+.DS_Store
+__pycache__/
+config/request-log.txt
+config/throughput-records.json
