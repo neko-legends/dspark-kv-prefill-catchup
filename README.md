@@ -1,16 +1,88 @@
-# DeepSeek V4 Flash 0731 Abliterated · TP=4 · 4× DGX Spark
+# dspark-kv-prefill-catchup
+
+Two things in one repo:
+
+1. **Stand up** DeepSeek V4 Flash (abliterated NVFP4) as one TP=4 vLLM world
+   on four NVIDIA DGX Sparks.
+2. **Keep an agent transcript warm** in that world's prefix cache so flipping
+   to the local model is decode-only.
+
+The serving recipe is why the sidecar is worth running. The sidecar is why a
+day of chat on a fast hosted model can still land on Sparks without a
+multi-minute prefill.
+
+This is a **Neko Legends** project. The measured decode numbers are the
+abliterated NVFP4 32-32 checkpoint, not stock official 0731.
+
+---
+
+## Catch-up in one page
+
+You chat on grok / kimi / flash-fast all day. After every turn, and after
+every compact, a tiny sidecar POSTs the **exact** OpenAI body the local
+engine will see later, with `max_tokens=1`. vLLM prefix-caches it.
+
+When you switch to `sparks/auto` (or any pin of that engine), the prompt is
+already KV. TTFT is decode, not a 150k–330k prefill.
+
+```text
+you finish a turn on any model
+        │
+        ▼
+ harness POST /v1/snapshot   ──►  sidecar  ──►  vLLM warmup (max_tokens=1)
+        │
+        ▼
+ GET /v1/status  →  grey / orange / green / red
+        │
+        ▼
+ switch to local model  →  same body  →  cache hit
+```
+
+### Status colors
+
+| Color | State | Meaning |
+|---|---|---|
+| grey | `idle` | No snapshot yet, or sidecar off |
+| orange | `warming` / `stale` | Warmup in flight, or transcript changed since last warm |
+| green | `warm` | Last successful warmup hash equals the current snapshot |
+| red | `error` | Last warmup failed (engine down, 400, too big) |
+
+Green is **hash match after a finished warmup**, not “vLLM is idle.”
+`cached_tokens` on the warmup call itself is often ~0 (that call *is* the
+prefill). Do not wait for a high cache ratio on the first response.
+
+### Rolling 1M
+
+Reserve a window (default 1M tokens of a ~4.8M KV pool). Append-only growth
+is a cheap delta. Sliding the window off the front is a **new** prefix —
+the sidecar recomputes the kept tail in the background. Cut in big chunks
+or compact. Do not drip-drop 1k tokens every turn past the cap.
+
+### What the harness must get right
+
+Warmup and the real turn must use the **same prompt builder** (same
+messages, tools, chat-template kwargs). One extra clock line at the front
+of the system prompt misses the whole cache.
+
+Pi, Eva-core, Hermes, or anything else: implement the tiny bridge in
+[`docs/BRIDGES.md`](docs/BRIDGES.md). Protocol:
+[`docs/PROTOCOL.md`](docs/PROTOCOL.md).
+
+```bash
+python3 -m catchup --listen 127.0.0.1:18900 --vllm http://HEAD:18888/v1
+```
+
+---
+
+## 4× DGX Spark serving recipe
 
 Uncensored DeepSeek V4 Flash 0731 NVFP4, tensor-parallel across four NVIDIA
 DGX Sparks (GB10) on a switched CX-7 RoCE fabric.
 
-This is a **Neko Legends** serving recipe. The checkpoint is the abliterated
-NVFP4 32-32 build, not the stock official weights. Numbers below were measured
-on that checkpoint.
-
 **Record single-stream decode: 113.8 tok/s** (vLLM engine 10 s average).
 Formal warmed C1 median: **103.4 tok/s**.
 
-## Result
+### Result
 
 Abliterated NVFP4, thinking off, temperature 0, concurrency 1, 2048 completion
 tokens, cluster idle. Server metric is
@@ -37,7 +109,12 @@ Maximum concurrency for 393,216 tokens per request: 12.19x
 A short-prompt C1 number and a long-session agent number are different
 measurements. Deep cached trunks decode slower. Publish both if you quote one.
 
-## Topology
+Catch-up wants a **1M legal ceiling** so a reserved Eva window is not a 400.
+Raising `max_model_len` to 1M does not grow KV GiB and does not raise C1.
+It only makes a 1M snapshot legal. Prefill of a *cold* 1M is still minutes —
+that is what catch-up exists to hide.
+
+### Topology
 
 Four GB10 nodes, one vLLM world, TP=4.
 
@@ -50,14 +127,14 @@ Four GB10 nodes, one vLLM world, TP=4.
 
 Set hostnames, IPs, and the model host path in `.env` (not committed).
 
-## Serving shape
+### Serving shape
 
 Image: `dspark-vllm-gx10:0.1.1-flashinfer-0.6.15` (Anemll 0.1.1 / vLLM 0.25.2).
 
 ```text
 --tensor-parallel-size 4 --nnodes 4
 --kv-cache-dtype nvfp4_ds_mla --block-size 256
---max-model-len 393216
+--max-model-len 393216          # raise to 1048576 when catch-up reserves 1M
 --max-num-seqs 12
 --max-num-batched-tokens 8264
 --max-cudagraph-capture-size 96          # seqs × (k + 1)
@@ -76,7 +153,7 @@ the image default of 1024 dies with `Too many open files`.
 Launch from the head: worker ranks first, then the API rank.
 See `scripts/start-dspark-tp4.sh`.
 
-## Why these knobs
+### Why these knobs
 
 | knob | we run | why |
 |---|---|---|
@@ -85,16 +162,12 @@ See `scripts/start-dspark-tp4.sh`.
 | `max_cudagraph_capture_size` | `seqs × (k+1)` = 96 | A copied `36` truncates to 32 and dumps larger batches into eager. |
 | `max_num_batched_tokens` | 8264 | vLLM subtracts `(k−1)×seqs` from the prefill budget and warns below 8192. `8192` raw lands under it. |
 | `gpu_memory_utilization` | 0.85 | 0.80 wastes ~7 GiB. 0.90 does not boot on this weight split. |
-| `max_model_len` | 393216 | KV pool GiB is almost flat from 327k–1M. The ceiling is a blast-radius cap, not extra speed. |
+| `max_model_len` | 393216 | KV pool GiB is almost flat from 327k–1M. The ceiling is a blast-radius cap, not extra speed. Raise to 1M if catch-up should be allowed to park a 1M window. |
 | `cudagraph_mode` | FULL_DECODE_ONLY | One graph set. No measured cost. |
 | omitted `temperature` | forced 0.0 | `--generation-config vllm` otherwise defaults omitted temp to 1.0 and wrecks MTP accept. |
 | thinking | off | On this checkpoint, thinking-on C1 was ~65 vs ~84–103 thinking-off. |
 
-Raising `max_model_len` to 1M does **not** grow the KV pool in GiB and does
-**not** raise C1 decode. Prefill of a true 500k–1M prompt is many minutes.
-Cap the *client* if you care about TTFT.
-
-## Landmines
+### Landmines
 
 1. **One IPv4 on the NCCL NIC.** A leftover switch-management address as the
    primary IP makes NCCL advertise that address. Workers cannot reach it and
@@ -108,8 +181,11 @@ Cap the *client* if you care about TTFT.
 4. **Quote decode with prompt length and warmup.** A 10 s engine average
    during a 400k prefill is not a decode record. Warm the graphs (several
    full-length generations) before publishing C1.
+5. **Prefix cache is LRU.** Nightly / memory-world jobs with fat unique
+   prompts can evict the reserved agent window. Cap those jobs. After a
+   wave, POST the agent snapshot again (`reason=restore`).
 
-## Reproduce the C1 number
+### Reproduce the C1 number
 
 Cluster idle. No other clients. Thinking off. Temperature 0.
 
@@ -127,20 +203,30 @@ Drop any trial where `request_success_total` increases by more than 1.
 
 Raw trial lists: [`results/c1-decode-2026-08-14.json`](results/c1-decode-2026-08-14.json).
 
-## What this is not
+### What this is not
 
 - Not official (non-abliterated) 0731 numbers.
 - Not a 1M-prompt throughput claim. Nobody here has decoded *at* 1M.
 - Not aggregate multi-stream throughput. C4/C12 is a different measurement.
 - Not a license to ship prompts. Weights stay on the cluster.
 
+---
+
 ## Layout
 
 ```text
-.env.example                 fabric + serving knobs (copy to .env)
+.env.example                 fabric + serving + catch-up knobs
 scripts/start-dspark-tp4.sh  worker-first launch
 scripts/stop-dspark-tp4.sh
 scripts/status-dspark-tp4.sh
 scripts/bench-decode.py      C1 streaming + Prometheus decode rate
+scripts/start-catchup.sh     sidecar
+catchup/                     protocol + HTTP sidecar (stdlib only)
+docs/PROTOCOL.md             harness-agnostic snapshot API
+docs/BRIDGES.md              Pi / Eva-core / Hermes
 results/                     measured artifacts
+```
+
+```bash
+python3 -m unittest discover -s catchup -v
 ```
