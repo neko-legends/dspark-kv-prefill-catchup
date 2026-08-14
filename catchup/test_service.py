@@ -11,6 +11,7 @@ from catchup.service import (
     color_for,
     estimate_prompt_tokens,
     hash_snapshot,
+    reserved_limit,
 )
 from catchup.__main__ import build_handler
 
@@ -45,6 +46,11 @@ class HashAndRollTests(unittest.TestCase):
         self.assertLess(len(rolled), len(messages))
         self.assertEqual(rolled[-1], messages[-1])
         self.assertLessEqual(estimate_prompt_tokens(rolled), 25)
+
+    def test_reserved_limit_leaves_headroom(self):
+        self.assertEqual(reserved_limit(1000000), 900000)
+        self.assertEqual(reserved_limit(0), 0)
+        self.assertEqual(reserved_limit(8), 8)
 
     def test_colors(self):
         self.assertEqual(color_for("idle"), "grey")

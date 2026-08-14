@@ -14,6 +14,20 @@ from urllib.request import Request, urlopen
 REASONS = ("turn", "compact", "boot", "restore", "touch")
 COLORS = ("grey", "orange", "green", "red")
 
+# Reserve headroom below max_context for the chat-template overhead (role/special
+# tokens, the tools definition) and for the 4-chars/token estimate's inaccuracy.
+# Without it, a prompt the estimate calls ~max_context tokens can tokenize past
+# the engine's hard limit — the 1M-context sparks model rejects at 1048576 with a
+# 400 ("input_tokens: 1048576") — and the session wedges red instead of prewarming.
+RESERVE_FRACTION = 0.10
+
+
+def reserved_limit(value) -> int:
+    limit = int(value or 0)
+    if limit <= 0:
+        return 0
+    return max(1, limit - int(limit * RESERVE_FRACTION))
+
 
 def _clean(value: Any) -> str:
     return str(value or "").strip()
@@ -94,7 +108,7 @@ def hash_snapshot(messages: list, tools: list | None = None, chat_template_kwarg
 
 
 def apply_rolling_window(messages: list, max_context: int) -> list:
-    limit = int(max_context or 0)
+    limit = reserved_limit(max_context)
     if limit <= 0 or estimate_prompt_tokens(messages) <= limit:
         return list(messages)
     kept = list(messages)
@@ -174,7 +188,7 @@ class CatchupService:
 
     def submit(self, body: Mapping[str, Any]) -> dict[str, Any]:
         snapshot = normalize_snapshot(body)
-        limit = snapshot["max_context"] or self.max_context
+        limit = reserved_limit(snapshot["max_context"] or self.max_context)
         rolled = apply_rolling_window(snapshot["messages"], limit)
         digest = hash_snapshot(rolled, snapshot["tools"], snapshot["chat_template_kwargs"])
         estimate = estimate_prompt_tokens(rolled)
