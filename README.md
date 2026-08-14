@@ -102,8 +102,8 @@ Clean trials only. Windows with a second in-flight request were dropped.
 Live boot after this recipe:
 
 ```text
-GPU KV cache size: 4,793,645 tokens
-Maximum concurrency for 393,216 tokens per request: 12.19x
+GPU KV cache size: 8,110,123 tokens
+Maximum concurrency for 1,048,576 tokens per request: 7.73x
 ```
 
 A short-prompt C1 number and a long-session agent number are different
@@ -134,7 +134,7 @@ Image: `dspark-vllm-gx10:0.1.1-flashinfer-0.6.15` (Anemll 0.1.1 / vLLM 0.25.2).
 ```text
 --tensor-parallel-size 4 --nnodes 4
 --kv-cache-dtype nvfp4_ds_mla --block-size 256
---max-model-len 393216          # raise to 1048576 when catch-up reserves 1M
+--max-model-len 1048576         # reserved Eva window; KV pool GiB stays flat
 --max-num-seqs 12
 --max-num-batched-tokens 8264
 --max-cudagraph-capture-size 96          # seqs × (k + 1)
@@ -162,7 +162,7 @@ See `scripts/start-dspark-tp4.sh`.
 | `max_cudagraph_capture_size` | `seqs × (k+1)` = 96 | A copied `36` truncates to 32 and dumps larger batches into eager. |
 | `max_num_batched_tokens` | 8264 | vLLM subtracts `(k−1)×seqs` from the prefill budget and warns below 8192. `8192` raw lands under it. |
 | `gpu_memory_utilization` | 0.85 | 0.80 wastes ~7 GiB. 0.90 does not boot on this weight split. |
-| `max_model_len` | 393216 | KV pool GiB is almost flat from 327k–1M. The ceiling is a blast-radius cap, not extra speed. Raise to 1M if catch-up should be allowed to park a 1M window. |
+| `max_model_len` | 1048576 | Legal size for the reserved catch-up window. KV pool GiB is almost flat from 327k–1M. Does not raise C1 decode. |
 | `cudagraph_mode` | FULL_DECODE_ONLY | One graph set. No measured cost. |
 | omitted `temperature` | forced 0.0 | `--generation-config vllm` otherwise defaults omitted temp to 1.0 and wrecks MTP accept. |
 | thinking | off | On this checkpoint, thinking-on C1 was ~65 vs ~84–103 thinking-off. |
