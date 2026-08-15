@@ -1,20 +1,67 @@
 {
-  "deployment": "deepseek-v4-flash-abliterated (prem-research/DeepSeek-V4-Flash-0731-abliterated), TP4 forge+anvil+ember+flame, 500K ctx, container up ~03:30 PDT 2026-08-15",
-  "benchmarked_at": "2026-08-15T04:00-04:10 PDT",
-  "prefill": [
-    {"target": 1024, "prompt_tokens": 904, "ttft_s": 1.00, "tok_s": 906},
-    {"target": 8192, "prompt_tokens": 7136, "ttft_s": 7.28, "tok_s": 980},
-    {"target": 32768, "prompt_tokens": 28504, "ttft_s": 29.48, "tok_s": 967},
-    {"target": 65536, "prompt_tokens": 56999, "ttft_s": 77.19, "tok_s": 738, "note": "noisy"},
-    {"target": 131072, "prompt_tokens": 113989, "ttft_s": 122.91, "tok_s": 927}
-  ],
-  "decode_c1_512_n6": {"client_median": 33.53, "server_median": 33.6, "sd": 0.42, "range": [32.73, 33.72]},
-  "decode_c4_256": {"warm_aggregate_tok_s": 92.43, "per_stream": 25.0, "cold_first_run_aggregate": 34.15},
-  "baselines_tp2_0731_20260731": {
-    "prefill_needle_tok_s": 1576,
-    "decode_c1_256": 44.16,
-    "decode_soak_512_median": 67.7,
-    "decode_c4_256_aggregate": 93.15,
-    "peak_count300": 87.3
+ "deployment": "deepseek-v4-flash-abliterated (prem-research/DeepSeek-V4-Flash-0731-abliterated), TP4 forge+anvil+ember+flame, 500K ctx, container up ~03:30 PDT 2026-08-15",
+ "benchmarked_at": "2026-08-15T04:00-04:10 PDT",
+ "prefill": [
+  {
+   "target": 1024,
+   "prompt_tokens": 904,
+   "ttft_s": 1.0,
+   "tok_s": 906
+  },
+  {
+   "target": 8192,
+   "prompt_tokens": 7136,
+   "ttft_s": 7.28,
+   "tok_s": 980
+  },
+  {
+   "target": 32768,
+   "prompt_tokens": 28504,
+   "ttft_s": 29.48,
+   "tok_s": 967
+  },
+  {
+   "target": 65536,
+   "prompt_tokens": 56999,
+   "ttft_s": 77.19,
+   "tok_s": 738,
+   "note": "noisy"
+  },
+  {
+   "target": 131072,
+   "prompt_tokens": 113989,
+   "ttft_s": 122.91,
+   "tok_s": 927
   }
+ ],
+ "decode_c1_512_n6": {
+  "client_median": 33.53,
+  "server_median": 33.6,
+  "sd": 0.42,
+  "range": [
+   32.73,
+   33.72
+  ]
+ },
+ "decode_c4_256": {
+  "warm_aggregate_tok_s": 92.43,
+  "per_stream": 25.0,
+  "cold_first_run_aggregate": 34.15
+ },
+ "baselines_tp2_0731_20260731": {
+  "prefill_needle_tok_s": 1576,
+  "decode_c1_256": 44.16,
+  "decode_soak_512_median": 67.7,
+  "decode_c4_256_aggregate": 93.15,
+  "peak_count300": 87.3
+ },
+ "fabric_followup_20260815_0500": {
+  "rail_a_switch_tcp": "39.2 Gbps single-flow, 105 Gbps -P4 (was ~13 cap pre-tonight)",
+  "rail_b_tcp_forge_anvil": "48.5 Gbps single-flow after MTU fix (forge enP2p1s0f1np1 was 1500, set 9000), 68.1 -P4",
+  "rail_b_roce_forge_anvil": "104 Gbps (13005 MB/s ib_write_bw, gid3 v2)",
+  "rail_a_roce": "ib_write_bw stalls on all sizes; PFC/lossless config suspect on switch path",
+  "ember_flame_rail_b": "RDMA port logically DOWN both nodes; flame had no rail-B IP (added 192.168.5.4/24 mtu 9000, ping OK)",
+  "nccl_vllm": "pinned to rail A only: NCCL_IB_HCA=rocep1s0f1, NCCL_IB_ADDR_RANGE=192.168.2.0/24, GID 3; rail B unused by serving",
+  "lldp": "forge rail B -> MikroTik qsfp56-dd-1-1; anvil/ember/flame rail B report themselves (LLDP flooding or loopbacks) - physical topology ambiguous"
+ }
 }
