@@ -63,5 +63,29 @@
   "ember_flame_rail_b": "RDMA port logically DOWN both nodes; flame had no rail-B IP (added 192.168.5.4/24 mtu 9000, ping OK)",
   "nccl_vllm": "pinned to rail A only: NCCL_IB_HCA=rocep1s0f1, NCCL_IB_ADDR_RANGE=192.168.2.0/24, GID 3; rail B unused by serving",
   "lldp": "forge rail B -> MikroTik qsfp56-dd-1-1; anvil/ember/flame rail B report themselves (LLDP flooding or loopbacks) - physical topology ambiguous"
+ },
+ "railb_relaunch_20260815_1130": {
+  "change": "NCCL moved rail A->rail B (roceP2p1s0f1, 192.168.10.0/24); leftover 1.x/3.x/5.x subnets removed (multi-subnet iface broke NCCL bootstrap rendezvous); healthy 8-min boot",
+  "decode_c1_512_n6": {
+   "median": 33.4,
+   "range": [
+    33.3,
+    33.55
+   ]
+  },
+  "decode_c4_256": {
+   "aggregate_tok_s": 94.51,
+   "per_stream": [
+    24.6,
+    25.9
+   ]
+  },
+  "prefill": {
+   "1k": 886,
+   "8k": 977,
+   "32k": 962,
+   "128k": 940
+  },
+  "verdict": "Rail choice makes no difference for serving: C1/C4/prefill all within noise of rail A. TP4 topology (not fabric) is the single-stream bottleneck. Old TP2 baselines: C1 67.7, C4 93.15, prefill ~1576."
  }
 }
