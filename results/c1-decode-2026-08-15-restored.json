@@ -1,0 +1,50 @@
+{
+  "org": "Neko Legends",
+  "date": "2026-08-15",
+  "context": "Restored record recipe after the 2026-08-15 config regression (see logs/diagnosis-20260815-tp4-decode-regression.md). Same cluster: 4x GB10 DGX Spark TP=4, rail B (roceP2p1s0f1, 192.168.10.0/24), image dspark-vllm-gx10:0.1.1-flashinfer-0.6.15, checkpoint ablit-32-32, k=7 dspark spec, nvfp4_ds_mla KV, max_num_batched_tokens 16384, mem util 0.85, seqs 12, capture 96.",
+  "boot": {
+    "kv_cache_tokens": 5546682,
+    "concurrency_at_1m": 5.29,
+    "spec": "SpeculativeConfig(method='dspark', num_spec_tokens=7); DSpark draft model loaded",
+    "cudagraphs": "FULL_DECODE_ONLY, capture sizes 1..96"
+  },
+  "formal_c1_2048_clean": {
+    "protocol": "scripts/bench-decode.py --max-tokens 2048 --warmup 8 --n 10, cluster idle, temp 0, thinking off",
+    "client_wall": {
+      "n": 10, "mean": 102.48, "median": 101.93, "sd": 3.25,
+      "min": 95.91, "max": 109.16,
+      "trials": [95.91, 101.01, 101.12, 101.13, 101.82, 101.93, 103.19, 104.61, 104.93, 109.16]
+    }
+  },
+  "decode_at_prompt_depth_512_completion": {
+    "note": "scripts/bench-depth.py + spec probes. Acceptance per draft step in parentheses. Decode rate at depth is workload-dependent: code holds acceptance, repetitive prose collapses it. Depth itself costs only ~15% step time.",
+    "short_code_37tok": {"tok_s": [95.97, 98.19], "accept_per_step": [4.79, 4.92]},
+    "code_task_5056tok": {"tok_s": [83.75, 78.97], "accept_per_step": [4.65, 4.72]},
+    "code_task_10061tok": {"tok_s": [92.84], "accept_per_step": [4.63]},
+    "prose_task_5033tok": {"tok_s": [56.19, 52.19], "accept_per_step": [2.38, 2.14]},
+    "prose_filler_5023tok": {"tok_s_median": 58.91, "note": "warmup-limited first trial 40.0"},
+    "prose_filler_10028tok": {"tok_s_median": 64.43}
+  },
+  "c4_256": {
+    "aggregate_tok_s": 182.22,
+    "per_stream_decode": [48.48, 49.69, 47.5, 48.48],
+    "note": "broken stack this morning: 92.43 aggregate. TP2 0731 baseline: 93.15."
+  },
+  "lifetime_spec_stats": {
+    "accepted_over_draft_tokens": 0.74,
+    "per_position_acceptance": [0.95, 0.89, 0.83, 0.75, 0.69, 0.59]
+  },
+  "fabric_findings_20260815": {
+    "twin_question": "Each CX-7 exposes 2 PFs: f0 = ASIC physical port 0 (DARK on this board, ethtool 'No cable'), f1 = physical port 1 (the cage). There is no second logical half of the cabled port to give NCCL.",
+    "f1_link_speed": "200000Mb/s on both rails (ethtool)",
+    "nccl_hca_verdict": "NCCL_IB_HCA stays single-active-device per rail (roceP2p1s0f1 on rail B). Listing the dark f0 would point NCCL at a dead port. After the new switch fixes rail-A PFC, dual-RAIL (rocep1s0f1+roceP2p1s0f1 = 2x200G) is the real multi-HCA upgrade.",
+    "gid_lesson": "RoCEv2 GID indices differ per node (forge=5, anvil=7, ember=7, flame=3) and renumber when iface addresses change. Never hardcode -x 3 in perftest; always resolve dynamically like start-dspark-tp4.sh does.",
+    "perftest_stall": "single-QP ib_write_bw stalls on rail B currently (same PFC-suspect switch issue as rail A this morning); NCCL serving unaffected both rails. Retest -q 8 after the switch swap for the 200G-throughput proof."
+  },
+  "fixes_applied": [
+    "forge: compose restored from docker-compose.dspark-tp4.yml.bak-b12x-2349 (parameterized record recipe; hardcoded sparkrun command preserved as .bak-sparkrun-hardcoded-20260815)",
+    "forge: .env.dspark.tp4.railb-200g = record env on rail B addressing",
+    "eva: eva-kv-catchup.service CATCHUP_MODEL deepseek-v4-flash-abliterated -> deepseek-v4-flash-0731-ablit-32-32 (was warming the stale served name)",
+    "repo: scripts/status-dspark-tp4.sh gained serving-shape gate (spec counters + served name)"
+  ]
+}

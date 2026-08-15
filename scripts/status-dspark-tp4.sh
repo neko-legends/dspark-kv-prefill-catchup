@@ -19,3 +19,21 @@ done
 echo
 echo "=== API ==="
 curl -fsS --max-time 5 "http://127.0.0.1:${VLLM_PORT:-18888}/v1/models" && echo || echo "API not ready"
+
+echo
+echo "=== serving-shape gate ==="
+# 2026-08-15 regression: an image swap silently dropped speculative decoding
+# (env MTP contract ignored by the new entrypoint) and C1 fell 103 -> 33.5.
+# If spec counters are absent from /metrics, the stack is NOT the record recipe.
+metrics="$(curl -fsS --max-time 8 "http://127.0.0.1:${VLLM_PORT:-18888}/metrics" 2>/dev/null || true)"
+if [[ -z "$metrics" ]]; then
+  echo "FAIL: /metrics unreachable"
+elif ! grep -q '^vllm:spec_decode_num_drafts_total' <<<"$metrics"; then
+  echo "FAIL: no spec-decode counters -- speculative decoding is OFF (wrong image/entrypoint?)"
+else
+  drafts=$(grep '^vllm:spec_decode_num_drafts_total' <<<"$metrics" | awk '{print $2}')
+  accepted=$(grep '^vllm:spec_decode_num_accepted_tokens_total' <<<"$metrics" | awk '{print $2}')
+  echo "OK: speculative decoding live (drafts=$drafts accepted=$accepted)"
+fi
+served=$(curl -fsS --max-time 5 "http://127.0.0.1:${VLLM_PORT:-18888}/v1/models" 2>/dev/null | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+echo "served model: ${served:-unknown} (catch-up expects ${CATCHUP_MODEL:-unset})"
