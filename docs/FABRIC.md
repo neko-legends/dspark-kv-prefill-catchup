@@ -4,6 +4,26 @@ Everything we learned the hard way about wiring four DGX Sparks into one
 TP=4 world over a MikroTik CRS812. Read this *before* benching — most
 "TP4 is slow" reports are fabric configuration, not the model.
 
+![physical connections](fabric-topology-2026-08-16.png)
+
+Same map as text:
+
+```text
+ node               data-plane cables (two 200G CX-7 ports each)
+ forge  (rank 0) ─── rail B: enP2p1s0f1np1 ═════════════════╗
+        API :18888 ─ rail A: enp1s0f1np1  - - - - - - - - -║- - - - - ╮
+ anvil/ember/flame   same two cables each                   ║         │
+ (rank 1-3, headless)                                       ▼         │
+                                               ┌──────────────────────┴──┐
+                                               │ MikroTik CRS812         │
+                                               │ 200G per QSFP-DD port   │
+                                               └─────────────────────────┘
+ ═══ rail B (serving today):  192.168.10.x/24, MTU 9000, HCA roceP2p1s0f1
+ - - rail A (idle / future dual-rail 400G): 192.168.2.x/24, MTU 9000, HCA rocep1s0f1
+ f0 functions (enp1s0f0np0 / enP2p1s0f0np0): dark silicon — do not cable or configure
+ management plane: LAN 192.168.68.x + Tailscale — SSH/dashboards only, NEVER NCCL
+```
+
 ## Topology and port anatomy
 
 Each node has two CX-7 PCI devices, each with two PCI functions:
