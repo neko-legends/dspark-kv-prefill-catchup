@@ -73,8 +73,9 @@ second rail as the future dual-rail upgrade.
 
 Unlocked DVFS dips to ~1970 MHz under sustained prefill and boosts ~2500 in
 decode — decode benches are clock-insensitive, prefill benches are not.
-`nvidia-smi -lgc 0,2200` on every node holds ~2171 sustained and made prefill
-measurements reproducible (and faster: see README knobs table). Persist it:
+`nvidia-smi -lgc 0,2200` on every node holds ~2171 sustained: prefill stays
+fast and reproducible, decode is unchanged (not clock-bound), and it *saves*
+power — same throughput as a 2400 lock at ~21% fewer watts. Persist it:
 `scripts/spark-gpu-clock-lock.service`.
 
 ## Sanity checklist before publishing any bench number

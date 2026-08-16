@@ -241,7 +241,7 @@ See `scripts/start-dspark-tp4.sh`.
 | `gpu_memory_utilization` | 0.85 | 0.80 wastes ~7 GiB. 0.90 does not boot on this weight split. |
 | `max_model_len` | 1048576 | Legal size for the reserved catch-up window. KV pool GiB is almost flat from 327k–1M. Does not raise C1 decode. |
 | `cudagraph_mode` | FULL_DECODE_ONLY | One graph set. No measured cost. |
-| GPU clock | `nvidia-smi -lgc 0,2200` on every node | Unlocked DVFS dips to ~1970 MHz under sustained prefill; the lock holds ~2171. Prefill 32k cold: ~2100 tok/s (was ~950 pre-cleanup; TP2's old baseline was 1576). Decode unchanged (not clock-bound). 2400 tested: same speed at +26% power. Persisted with `scripts/spark-gpu-clock-lock.service` (systemd, enabled on all four). |
+| GPU clock | `nvidia-smi -lgc 0,2200` on every node | Nearly free wins. Prevents throttling: unlocked DVFS dips to ~1970 MHz under sustained prefill; the lock holds ~2171 steady — prefill 32k cold ~2100 tok/s (was ~950 pre-cleanup; TP2's old baseline was 1576). Cost is negligible: decode unchanged (135.3 vs 136.25, within noise — decode is not clock-bound). Saves electricity: same throughput as a 2400 lock at ~21% fewer watts (37.8W vs 47.6W sustained), ~3W less at idle, and no boost-and-throttle oscillation. Persisted with `scripts/spark-gpu-clock-lock.service` (systemd, enabled on all four). |
 | omitted `temperature` | forced 0.0 | `--generation-config vllm` otherwise defaults omitted temp to 1.0 and wrecks MTP accept. |
 | thinking | off | On this checkpoint, thinking-on C1 was ~65 vs ~84–103 thinking-off. |
 
