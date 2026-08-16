@@ -130,6 +130,9 @@ Four GB10 nodes, one vLLM world, TP=4.
 - Three workers are headless ranks.
 - NCCL / Gloo / TP sockets stay on the CX-7 data NIC, never the tailnet.
 - Management plane (SSH, dashboard) may use LAN or Tailscale.
+- Fabric pitfalls, switch/PFC config, perftest methodology, GID rules, and
+  the pre-bench sanity checklist: **[docs/FABRIC.md](docs/FABRIC.md)**. Most
+  "TP4 is slow" reports are fabric configuration, not the model.
 - Fabric here: switched L2 RoCE, one 200G CX-7 port per node per rail
   (rail A `enp1s0f1np1` `192.168.2.0/24`, rail B `enP2p1s0f1np1`
   `192.168.10.0/24`, MTU 9000). Serving currently runs rail B, HCA
@@ -250,15 +253,22 @@ Raw trial lists: [`results/c1-decode-2026-08-14.json`](results/c1-decode-2026-08
 
 ```text
 .env.example                 fabric + serving + catch-up knobs
-scripts/start-dspark-tp4.sh  worker-first launch
+docker-compose.dspark-tp4.yml  the full parameterized serving command
+patches/                     boot-time hotfixes applied by the compose
+vllm_patch_gb10/             optional GB10 hybrid-nvfp4 plugin tree
+scripts/start-dspark-tp4.sh  worker-first launch + serving-shape gate
 scripts/stop-dspark-tp4.sh
 scripts/status-dspark-tp4.sh
 scripts/bench-decode.py      C1 streaming + Prometheus decode rate
+scripts/bench-depth.py       decode at prompt depth (5k/10k) + C4
+scripts/spark-gpu-clock-lock.service  persist nvidia-smi -lgc 0,2200
 scripts/start-catchup.sh     sidecar
 catchup/                     protocol + HTTP sidecar (stdlib only)
+docs/FABRIC.md               CX-7/RoCE/switch runbook (read before benching)
 docs/PROTOCOL.md             harness-agnostic snapshot API
 docs/BRIDGES.md              Pi / Eva-core / Hermes
-results/                     measured artifacts
+results/                     measured artifacts (JSON + dated charts)
+logs/                        bench logs + incident diagnoses
 ```
 
 ```bash
