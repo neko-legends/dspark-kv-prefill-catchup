@@ -1,0 +1,12 @@
+[Unit]
+Description=Lock GPU SM clock to 2200 MHz (DGX Spark serving stability)
+After=nvidia-persistenced.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=/bin/sh -c 'for i in $$(seq 1 30); do [ -e /dev/nvidia0 ] && exit 0; sleep 2; done; exit 1'
+ExecStart=/usr/bin/nvidia-smi -lgc 0,2200
+
+[Install]
+WantedBy=multi-user.target

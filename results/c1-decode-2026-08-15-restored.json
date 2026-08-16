@@ -146,5 +146,12 @@
       ],
       "observed_peak_same_day": 145.5
     }
+  },
+  "clock_lock_20260816": {
+    "change": "nvidia-smi -lgc 0,2200 on all 4 nodes, persisted via /etc/systemd/system/spark-gpu-clock-lock.service (enabled)",
+    "why": "unlocked DVFS dips to 1969-1989 MHz under sustained prefill; decode boosts ~2500 but is not clock-bound",
+    "decode_impact": "135.3 vs 136.25 median \u2014 within noise",
+    "prefill_impact": "8k cold: 2156 tok/s; 32k cold: 2102 tok/s, clock held 2171-2177 sustained; vs ~950 measured pre-cleanup. Lock+cleanup combined win; isolated attribution not measured. lgc 2400 tested: same 2103 tok/s at +26% power \u2014 2200 is the sweet spot",
+    "note": "TP2 0731 prefill baseline 1576 tok/s now beaten by TP4: 2102+"
   }
 }
