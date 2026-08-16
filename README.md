@@ -11,11 +11,10 @@ one person (peaks of 145), reads long prompts at **~2,100 tokens/second**,
 and serves four people at once at **~182 tokens/second** combined. (A token
 is about ¾ of a word, so 136 tok/s is faster than anyone reads.)
 
-![The ledger: TP2 baseline vs broken boot vs old record vs now — decode, prefill, and concurrency](results/ledger-2026-08-16.png)
+![C1 decode: TP2 baseline, broken boot, old record, and now](results/c1-decode-journey-2026-08-16.png)
 
 *One day of fixing (2026-08-15 → 08-16): from a misconfigured boot where
-"TP2 beats TP4" to the fastest this cluster has ever run — on every metric
-at once.*
+"TP2 beats TP4" to the fastest this cluster has ever run.*
 
 There is also an optional extra: a small *catch-up helper* that quietly keeps
 the local model up to date with your ongoing conversation while you chat on a
@@ -143,7 +142,7 @@ DGX Sparks (GB10) on a switched CX-7 RoCE fabric.
 **Record single-stream decode: 145.5 tok/s** (observed peak, 2026-08-16).
 Formal warmed C1 median: **136.25 tok/s** (n=9 clean, sd 1.3, 2026-08-16).
 
-![C1 decode journey](results/c1-decode-journey-2026-08-16.png)
+![The full ledger: decode, prefill, and concurrency — TP2 vs broken vs record vs now](results/ledger-2026-08-16.png)
 
 ### Result
 
