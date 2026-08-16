@@ -157,55 +157,55 @@
   "thinking_off_vs_low_20260816": {
     "protocol": "bench-depth.py --max-tokens 512 --n 2 --skip-c4, temp 0, prose-summary task, cluster idle, clock locked 2200; thinking off vs low (reasoning_effort)",
     "c1_decode_tok_s": {
-      "5023_tok": {
-        "off": {
-          "median": 89.18,
-          "trials": [
-            71.33,
-            89.18
-          ]
-        },
-        "low": {
-          "median": 81.71,
-          "trials": [
-            78.19,
-            81.71
-          ]
-        }
+      "5000_tok": {
+        "off": 89.18,
+        "low": 81.71,
+        "high": 69.01,
+        "max": 69.41
       },
-      "10028_tok": {
-        "off": {
-          "median": 72.21,
-          "trials": [
-            66.14,
-            72.21
-          ]
-        },
-        "low": {
-          "median": 73.28,
-          "trials": [
-            68.68,
-            73.28
-          ]
-        }
+      "10000_tok": {
+        "off": 72.21,
+        "low": 73.28,
+        "high": 68.37,
+        "max": 69.42
       },
-      "49808_tok": {
-        "off": {
-          "median": 66.59,
-          "trials": [
-            64.93,
-            66.59
-          ]
-        },
-        "low": {
-          "median": 73.94,
-          "trials": [
-            71.21,
-            73.94
-          ]
-        }
+      "50000_tok": {
+        "off": 66.59,
+        "low": 73.94,
+        "high": 62.69,
+        "max": 70.14
       }
     },
-    "note": "off wins 5k, tie 10k, low wins 50k. n=2 per cell, \u00b15-8 noise. Off-state numbers are higher than the 08-15 prose probes (56-64) thanks to the fabric cleanup + clock lock."
+    "note": "Effort vocabulary is off/low/high/max (no 'medium'). Off dominates 5k, tie at 10k, LOW wins 50k while HIGH is worst \u2014 non-monotonic. n=2 per cell, \u00b15-8 noise.",
+    "trials": {
+      "high": {
+        "5000": [
+          67.66,
+          69.01
+        ],
+        "10000": [
+          66.32,
+          68.37
+        ],
+        "50000": [
+          60.86,
+          62.69
+        ]
+      },
+      "max": {
+        "5000": [
+          65.98,
+          69.41
+        ],
+        "10000": [
+          66.21,
+          69.42
+        ],
+        "50000": [
+          68.46,
+          70.14
+        ]
+      }
+    }
   }
 }

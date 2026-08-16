@@ -383,14 +383,16 @@ python3 -m unittest discover -s catchup -v
 
 ![thinking off vs low](results/thinking-off-vs-low-2026-08-16.png)
 
-| prompt depth | thinking off | thinking low |
-|---|---:|---:|
-| 5k (5,023 tok) | **89.2** | 81.7 |
-| 10k (10,028 tok) | 72.2 | **73.3** |
-| 50k (49,808 tok) | 66.6 | **73.9** |
+| prompt depth | off | low | high | max |
+|---|---:|---:|---:|---:|
+| 5k (~5.1k tok) | **89.2** | 81.7 | 69.0 | 69.4 |
+| 10k (~10.1k tok) | 72.2 | **73.3** | 68.4 | 69.4 |
+| 50k (~49.9k tok) | 66.6 | **73.9** | 62.7 | 70.1 |
 
 C1 client-wall decode tok/s, 512-token completions, temp 0, prose-summary
 task, n=2 medians per cell (±5–8 noise), cluster idle, clock locked 2200.
-Measured 2026-08-16 with `scripts/bench-depth.py --thinking off|low`.
-Off wins at 5k, ties at 10k, and thinking-low pulls ahead at 50k — depth
-shifts the crossover, so quote thinking state with any decode number.
+Measured 2026-08-16 with `scripts/bench-depth.py --thinking off|low|high|max`
+(the template's effort vocabulary — there is no "medium").
+Off dominates at 5k, everything ties at 10k, and at 50k thinking-**low** is
+fastest while **high** is slowest — effort is not monotonic. Quote the
+thinking state with any decode number.
