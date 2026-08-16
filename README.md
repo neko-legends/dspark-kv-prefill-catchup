@@ -11,6 +11,12 @@ one person (peaks of 145), reads long prompts at **~2,100 tokens/second**,
 and serves four people at once at **~182 tokens/second** combined. (A token
 is about ¾ of a word, so 136 tok/s is faster than anyone reads.)
 
+![The ledger: TP2 baseline vs broken boot vs old record vs now — decode, prefill, and concurrency](results/ledger-2026-08-16.png)
+
+*One day of fixing (2026-08-15 → 08-16): from a misconfigured boot where
+"TP2 beats TP4" to the fastest this cluster has ever run — on every metric
+at once.*
+
 There is also an optional extra: a small *catch-up helper* that quietly keeps
 the local model up to date with your ongoing conversation while you chat on a
 hosted model. When you switch to your own boxes, the first reply starts
