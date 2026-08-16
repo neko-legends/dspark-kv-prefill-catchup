@@ -1,4 +1,9 @@
-# dspark-kv-prefill-catchup
+# spark-bench
+
+*(formerly `dspark-kv-prefill-catchup` — renamed 2026-08-16; the serving
+recipe, fabric runbooks, boot gate, and bench archive outgrew the old name.
+The catch-up sidecar below is still here and still the point of the warm
+cache — it's just not the whole repo anymore.)*
 
 Two things in one repo:
 
