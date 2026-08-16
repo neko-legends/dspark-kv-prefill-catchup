@@ -79,8 +79,10 @@ python3 -m catchup --listen 127.0.0.1:18900 --vllm http://HEAD:18888/v1
 Uncensored DeepSeek V4 Flash 0731 NVFP4, tensor-parallel across four NVIDIA
 DGX Sparks (GB10) on a switched CX-7 RoCE fabric.
 
-**Record single-stream decode: 113.8 tok/s** (vLLM engine 10 s average).
-Formal warmed C1 median: **103.4 tok/s**.
+**Record single-stream decode: 145.5 tok/s** (observed peak, 2026-08-16).
+Formal warmed C1 median: **136.25 tok/s** (n=9 clean, sd 1.3, 2026-08-16).
+
+![C1 decode journey](results/c1-decode-journey-2026-08-16.png)
 
 ### Result
 
@@ -91,19 +93,20 @@ Client wall is `(completion_tokens − 1) / (t_last − t_first)` on streamed te
 
 | | tok/s |
 |---| ---: |
-| Record (engine 10 s window) | **113.8** |
-| Formal C1 median (n=7 clean) | **103.4** |
-| Formal C1 mean | 98.3 |
-| Formal C1 min / max | 84.3 / 107.5 |
-| Same cluster, previous k=5 shape, C1 2048 median | 85.7 |
+| Observed peak (2026-08-16) | **145.5** |
+| Formal C1 median (n=9 clean, 2026-08-16) | **136.25** |
+| Formal C1 mean / sd | 136.6 / 1.27 |
+| Formal C1 min / max | 135.1 / 139.3 |
+| Previous record (2026-08-14, rail A, pre-cleanup) | 103.4 median, 113.8 engine window |
+| Same cluster, no-spec (misconfigured boot) | 33.5 |
 
 Clean trials only. Windows with a second in-flight request were dropped.
 
-Live boot after this recipe:
+Live boot after this recipe (2026-08-16, clean fabric):
 
 ```text
-GPU KV cache size: 8,110,123 tokens
-Maximum concurrency for 1,048,576 tokens per request: 7.73x
+GPU KV cache size: 5,600,636 tokens
+Maximum concurrency for 1,048,576 tokens per request: ~5.3x
 ```
 
 A short-prompt C1 number and a long-session agent number are different
@@ -122,8 +125,18 @@ Four GB10 nodes, one vLLM world, TP=4.
 - Three workers are headless ranks.
 - NCCL / Gloo / TP sockets stay on the CX-7 data NIC, never the tailnet.
 - Management plane (SSH, dashboard) may use LAN or Tailscale.
-- Fabric here: switched L2 RoCE on `enp1s0f1np1`, `192.168.2.0/24`, MTU 9000,
-  HCA `rocep1s0f1`. A MikroTik CRS812 aggregates the QSFP-DD links.
+- Fabric here: switched L2 RoCE, one 200G CX-7 port per node per rail
+  (rail A `enp1s0f1np1` `192.168.2.0/24`, rail B `enP2p1s0f1np1`
+  `192.168.10.0/24`, MTU 9000). Serving currently runs rail B, HCA
+  `roceP2p1s0f1`. A MikroTik CRS812 aggregates the QSFP-DD links.
+- **Exactly one IPv4 per fabric interface.** A second address (old mesh
+  subnet, switch-management /24) on the NCCL iface both hangs bootstrap and
+  quietly taxes per-step routing — removing the leftovers was worth ~30% C1
+  (103.4 → 136.25 median on an otherwise identical config).
+- The CX-7's second PCI function per port (`f0` / `np0`) is a **dark physical
+  port** on this board, not a second lane-half: it has no carrier and nothing
+  to give NCCL. `f1` alone is the full 200G port. The multi-HCA upgrade is
+  dual-rail, not dual-function.
 
 Set hostnames, IPs, and the model host path in `.env` (not committed).
 
@@ -160,7 +173,7 @@ See `scripts/start-dspark-tp4.sh`.
 | `num_speculative_tokens` | 7 | This image’s kernels are shaped for dspark7. k=5 left ~18 tok/s on the table. |
 | `draft_sample_method` | probabilistic | Matches the target distribution. Greedy collapses acceptance off temp 0. |
 | `max_cudagraph_capture_size` | `seqs × (k+1)` = 96 | A copied `36` truncates to 32 and dumps larger batches into eager. |
-| `max_num_batched_tokens` | 8264 | vLLM subtracts `(k−1)×seqs` from the prefill budget and warns below 8192. `8192` raw lands under it. |
+| `max_num_batched_tokens` | 16384 | vLLM subtracts `(k−1)×seqs` from the prefill budget and warns below 8192. 32768 wedges the compile/autotune phase on all ranks (2026-08-15 incident) — grow this in stages, not jumps. |
 | `gpu_memory_utilization` | 0.85 | 0.80 wastes ~7 GiB. 0.90 does not boot on this weight split. |
 | `max_model_len` | 1048576 | Legal size for the reserved catch-up window. KV pool GiB is almost flat from 327k–1M. Does not raise C1 decode. |
 | `cudagraph_mode` | FULL_DECODE_ONLY | One graph set. No measured cost. |
@@ -169,21 +182,36 @@ See `scripts/start-dspark-tp4.sh`.
 
 ### Landmines
 
-1. **One IPv4 on the NCCL NIC.** A leftover switch-management address as the
-   primary IP makes NCCL advertise that address. Workers cannot reach it and
-   hang at `ncclCommInitRank`. Keep the fabric IPv4 primary.
-2. **`ulimit -n` must be 1M inside the container.** `bash -lc` in the image
+1. **One IPv4 on the NCCL NIC — enforced in netplan.** A leftover
+   switch-management address as the primary IP makes NCCL advertise that
+   address. Workers cannot reach it and hang at `ncclCommInitRank`. Stale
+   point-to-point mesh files in `/etc/netplan` resurrect dead subnets on every
+   reboot: delete or `.disabled` them, don't just `ip addr del`.
+2. **Launches start disarmed.** `DSPARK_RESTART_POLICY=no`; the start script
+   arms `unless-stopped` only after the API is up *and* spec-decode counters
+   appear in `/metrics` (serving-shape gate). A config that cannot boot
+   healthy must never wedge a node across reboots — and with `unless-stopped`
+   from the start, it did (2026-08-15 incident).
+3. **`ulimit -n` must be 1M inside the container.** `bash -lc` in the image
    drops nofile to 1024 unless you set it in compose *and* `ulimit` in the
    entrypoint.
-3. **Do not `netplan apply` an old point-to-point mesh file** after moving to
+4. **Do not `netplan apply` an old point-to-point mesh file** after moving to
    a switch. Persist the switched `/24` or the next reboot restores dead pair
    subnets.
-4. **Quote decode with prompt length and warmup.** A 10 s engine average
+5. **Quote decode with prompt length and warmup.** A 10 s engine average
    during a 400k prefill is not a decode record. Warm the graphs (several
    full-length generations) before publishing C1.
-5. **Prefix cache is LRU.** Nightly / memory-world jobs with fat unique
+6. **Prefix cache is LRU.** Nightly / memory-world jobs with fat unique
    prompts can evict the reserved agent window. Cap those jobs. After a
    wave, POST the agent snapshot again (`reason=restore`).
+
+Decode at depth and concurrency (measured 2026-08-15): MTP acceptance — not
+prompt depth — is the variable. Code tasks hold 4.6–4.9 accepted tok/step at
+5–10k (79–93 tok/s); repetitive prose drops to 2.1–2.4 (52–64 tok/s). C4
+aggregate is 182 tok/s.
+
+![decode at depth](results/decode-at-depth-2026-08-15.png)
+![c4 aggregate](results/c4-aggregate-2026-08-15.png)
 
 ### Reproduce the C1 number
 

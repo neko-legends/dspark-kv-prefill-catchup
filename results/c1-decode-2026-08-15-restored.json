@@ -124,6 +124,27 @@
       "max": 138.47
     },
     "kv_cache_tokens": 5600636,
-    "note": "~33% above the 103.4 record. Attribution unresolved between (a) stale-subnet removal cleaning NCCL/bootstrap routing per step and (b) fresh-boot node state. Formal n=10 + depth curve re-measure pending."
+    "note": "~33% above the 103.4 record. Attribution unresolved between (a) stale-subnet removal cleaning NCCL/bootstrap routing per step and (b) fresh-boot node state. Formal n=10 + depth curve re-measure pending.",
+    "formal_c1_2048_clean": {
+      "protocol": "bench-decode.py --max-tokens 2048 --warmup 6 --n 10, cluster idle, temp 0, thinking off; 1 trial dropped (foreign traffic)",
+      "n": 9,
+      "mean": 136.6,
+      "median": 136.25,
+      "sd": 1.27,
+      "min": 135.12,
+      "max": 139.33,
+      "trials": [
+        135.12,
+        135.3,
+        135.37,
+        136.24,
+        136.25,
+        137.19,
+        137.2,
+        137.43,
+        139.33
+      ],
+      "observed_peak_same_day": 145.5
+    }
   }
 }
