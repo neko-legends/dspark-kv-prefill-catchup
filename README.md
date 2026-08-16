@@ -10,6 +10,9 @@ GPU. Measured on our cluster: it writes answers at **~136 tokens/second** for
 one person (peaks of 145), reads long prompts at **~2,100 tokens/second**,
 and serves four people at once at **~182 tokens/second** combined. (A token
 is about ¾ of a word, so 136 tok/s is faster than anyone reads.)
+That headline is the *best case* — short prompt, code output. Regular chat
+at real conversation depths runs ~66–93 tok/s; see
+[the honest map](#the-honest-map-what-speed-you-actually-get) below.
 
 ![C1 decode: TP2 baseline, broken boot, old record, and now](results/c1-decode-journey-2026-08-16.png)
 
@@ -206,6 +209,26 @@ Client wall is `(completion_tokens − 1) / (t_last − t_first)` on streamed te
 | Formal C1 min / max | 135.1 / 139.3 |
 | Previous record (2026-08-14, rail A, pre-cleanup) | 103.4 median, 113.8 engine window |
 | Same cluster, no-spec (misconfigured boot) | 33.5 |
+
+### The honest map: what speed you actually get
+
+The record above is one cell of the matrix — short prompt, code output, long
+completion. Decode speed depends on **how much conversation the model is
+carrying** (attention cost) and **how predictable the output is** (MTP
+speculative-decoding acceptance: ~4.8–4.9 tok/step on code, ~2.1–2.4 on
+prose at depth). Same cluster, same config, honest ranges:
+
+| workload | decode tok/s |
+|---|---:|
+| Best case: short prompt, code, long run | **136 median · 145.5 peak** |
+| 5–10k prompt, code task | ~79–93 |
+| 5–10k prompt, regular chat / prose | ~72–89 |
+| Deep session (~50k prompt) | ~66–74 |
+
+So yes: 145 is real, but it's a code+short-context number. Everyday chat
+lands close to — but under — 100 tok/s, and that is a workload property
+(draft-model acceptance), not a config problem. Quote prompt depth, task
+type, and thinking state with any decode number.
 
 Clean trials only. Windows with a second in-flight request were dropped.
 
