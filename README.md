@@ -419,3 +419,10 @@ Measured 2026-08-16 with `scripts/bench-depth.py --thinking off|low|high|max`
 Off dominates at 5k, everything ties at 10k, and at 50k thinking-**low** is
 fastest while **high** is slowest — effort is not monotonic. Quote the
 thinking state with any decode number.
+
+> **Client-vocabulary caveat.** The template maps efforts as `max`/`xhigh`→max,
+> `high`→high, and **everything else → low, silently**. So clients whose
+> vocabulary includes `medium`/`minimal` — e.g. eva-core, whose default
+> fallback is `medium` — actually run at **low**, with no error or warning.
+> Verified live 2026-08-16. Conveniently, low is the 50k sweet spot; but if
+> you bench "medium", you benched low.
