@@ -78,12 +78,15 @@ multi-minute prefill.
   docker build -t dspark-vllm-gx10:0.1.1-flashinfer-0.6.15 -f Dockerfile.flashinfer-0.6.15 .
   ```
   or use the base tag as-is (different flashinfer — expect different numbers).
-- The model on **all four nodes**: DeepSeek V4 Flash NVFP4 weights at the
-  `DSPARK_MODEL_HOST` path from `.env`. Our records use a custom abliterated
-  checkpoint that is **not redistributable**; the stock
-  `deepseek-ai/DeepSeek-V4-Flash-0731` (or the DSpark NVFP4 variant) runs the
-  same recipe — expect slightly different numbers, mostly via MTP acceptance.
-  Set `SERVED_MODEL_NAME` to match what you actually serve.
+- The model on **all four nodes**: DeepSeek V4 Flash weights at the
+  `DSPARK_MODEL_HOST` path from `.env`. Our records use
+  [`drowzeys/keys-DeepSeekV4-Flash-GA-0731-Dspark-Abliterated-32-32`](https://huggingface.co/drowzeys/keys-DeepSeekV4-Flash-GA-0731-Dspark-Abliterated-32-32)
+  (the DSpark-native MXFP4-path abliterated checkpoint — fastest on Sparks in
+  our tests). Alternatives: stock `deepseek-ai/DeepSeek-V4-Flash-0731`, or
+  [`neko-legends/DeepSeek-V4-Flash-0731-Abliterated-NVFP4`](https://huggingface.co/neko-legends/DeepSeek-V4-Flash-0731-Abliterated-NVFP4)
+  for server-class NVFP4 stacks. Same recipe; expect slightly different
+  numbers, mostly via MTP acceptance. Set `SERVED_MODEL_NAME` to match what
+  you actually serve.
 - Config: `cp .env.example .env` and fill in hostnames, fabric IPs, and paths.
 
 **Then:**
