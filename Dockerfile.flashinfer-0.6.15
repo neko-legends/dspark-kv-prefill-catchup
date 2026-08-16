@@ -1,0 +1,9 @@
+ARG BASE_IMAGE=ghcr.io/anemll/dspark-vllm-gx10:0.1.1
+FROM ${BASE_IMAGE}
+
+USER root
+
+RUN python3 -m pip install --no-cache-dir --no-deps --upgrade --force-reinstall \
+      'flashinfer-jit-cache==0.6.15+cu130' \
+      --index-url https://flashinfer.ai/whl/cu130 \
+ && python3 -c "from importlib.metadata import version; assert version('flashinfer-python') == '0.6.15'; assert version('flashinfer-jit-cache') == '0.6.15+cu130'; print('flashinfer-python=' + version('flashinfer-python')); print('flashinfer-jit-cache=' + version('flashinfer-jit-cache'))"

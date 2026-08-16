@@ -62,6 +62,50 @@ The serving recipe is why the sidecar is worth running. The sidecar is why a
 day of chat on a fast hosted model can still land on Sparks without a
 multi-minute prefill.
 
+---
+
+## Quickstart (humans and AI agents)
+
+**You need:**
+
+- 4× NVIDIA DGX Spark (GB10), each with one 200G cable into one RoCE-capable
+  switch (we use a MikroTik CRS812). Wire it per
+  [docs/FABRIC.md](docs/FABRIC.md) — one rail is enough; two is a later upgrade.
+- The serving image on **all four nodes**. Either pull the base and build the
+  pinned variant:
+  ```bash
+  docker pull ghcr.io/anemll/dspark-vllm-gx10:0.1.1
+  docker build -t dspark-vllm-gx10:0.1.1-flashinfer-0.6.15 -f Dockerfile.flashinfer-0.6.15 .
+  ```
+  or use the base tag as-is (different flashinfer — expect different numbers).
+- The model on **all four nodes**: DeepSeek V4 Flash NVFP4 weights at the
+  `DSPARK_MODEL_HOST` path from `.env`. Our records use a custom abliterated
+  checkpoint that is **not redistributable**; the stock
+  `deepseek-ai/DeepSeek-V4-Flash-0731` (or the DSpark NVFP4 variant) runs the
+  same recipe — expect slightly different numbers, mostly via MTP acceptance.
+  Set `SERVED_MODEL_NAME` to match what you actually serve.
+- Config: `cp .env.example .env` and fill in hostnames, fabric IPs, and paths.
+
+**Then:**
+
+1. Fabric: exactly one IPv4 per fabric NIC, MTU 9000 end to end
+   ([docs/FABRIC.md](docs/FABRIC.md)); install
+   `scripts/spark-gpu-clock-lock.service` on every node.
+2. Launch: `scripts/start-dspark-tp4.sh` — workers first; the script boots
+   **disarmed**, then arms auto-restart only after the API and the
+   spec-decode gate pass.
+3. Verify: `scripts/status-dspark-tp4.sh` must print `OK: speculative
+   decoding live`. If it doesn't, stop here — every decode number measured
+   without spec is ~3× low.
+4. Bench: `scripts/bench-decode.py` (C1 record protocol),
+   `scripts/bench-depth.py` (5k/10k + C4).
+5. Optional: the catch-up sidecar (`scripts/start-catchup.sh` + a harness
+   bridge from `docs/BRIDGES.md`).
+
+If your numbers look wrong, it is almost never the model: check the
+serving-shape gate, then the fabric checklist at the end of
+[docs/FABRIC.md](docs/FABRIC.md).
+
 This is a **Neko Legends** project. The measured decode numbers are the
 abliterated NVFP4 32-32 checkpoint, not stock official 0731.
 
