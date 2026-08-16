@@ -37,7 +37,12 @@ def build_prompt(target_tokens: int) -> str:
     return "".join(parts)
 
 
-def run_once(url: str, model: str, prompt: str, max_tokens: int) -> dict:
+def run_once(url: str, model: str, prompt: str, max_tokens: int,
+             thinking: str = "off") -> dict:
+    if thinking == "off":
+        kwargs: dict = {"thinking": False}
+    else:
+        kwargs = {"thinking": True, "reasoning_effort": thinking}
     body = json.dumps({
         "model": model,
         "messages": [{"role": "user", "content": prompt}],
@@ -45,7 +50,7 @@ def run_once(url: str, model: str, prompt: str, max_tokens: int) -> dict:
         "temperature": 0,
         "stream": True,
         "stream_options": {"include_usage": True},
-        "chat_template_kwargs": {"thinking": False},
+        "chat_template_kwargs": kwargs,
     }).encode()
     req = urllib.request.Request(url + "/chat/completions", data=body,
                                  headers={"Content-Type": "application/json"})
@@ -83,13 +88,13 @@ def run_once(url: str, model: str, prompt: str, max_tokens: int) -> dict:
             "ttft_s": None if t1 is None else round(t1 - t0, 3), "decode_tok_s": wall}
 
 
-def c4(url: str, model: str, max_tokens: int) -> dict:
+def c4(url: str, model: str, max_tokens: int, thinking: str = "off") -> dict:
     prompt = "Write a complete, idiomatic Python binary search tree with tests. Code only."
     results: list[dict] = [{} for _ in range(4)]
     t0 = time.monotonic()
     threads = []
     for i in range(4):
-        th = threading.Thread(target=lambda j: results.__setitem__(j, run_once(url, model, prompt, max_tokens)), args=(i,))
+        th = threading.Thread(target=lambda j: results.__setitem__(j, run_once(url, model, prompt, max_tokens, thinking)), args=(i,))
         th.start()
         threads.append(th)
     for th in threads:
@@ -110,16 +115,17 @@ def main() -> None:
     ap.add_argument("--max-tokens", type=int, default=512)
     ap.add_argument("--n", type=int, default=3)
     ap.add_argument("--skip-c4", action="store_true")
+    ap.add_argument("--thinking", default="off", choices=["off", "low", "high", "max"])
     args = ap.parse_args()
 
-    out = {"depths": {}, "c4": None}
+    out = {"thinking": args.thinking, "depths": {}, "c4": None}
     for target in [int(d) for d in args.depths.split(",")]:
         prompt = build_prompt(target)
         # one warmup at this depth, then n measured
-        warm = run_once(args.base_url, args.model, prompt, args.max_tokens)
+        warm = run_once(args.base_url, args.model, prompt, args.max_tokens, args.thinking)
         rows = []
         for _ in range(args.n):
-            rows.append(run_once(args.base_url, args.model, prompt, args.max_tokens))
+            rows.append(run_once(args.base_url, args.model, prompt, args.max_tokens, args.thinking))
         rates = sorted(r["decode_tok_s"] for r in rows if r.get("decode_tok_s"))
         out["depths"][str(target)] = {
             "prompt_tokens_actual": rows[-1].get("prompt_tokens"),
@@ -129,8 +135,8 @@ def main() -> None:
         }
         print(f"depth {target}: {out['depths'][str(target)]}", flush=True)
     if not args.skip_c4:
-        run_once(args.base_url, args.model, "warm", 64)
-        out["c4"] = c4(args.base_url, args.model, 256)
+        run_once(args.base_url, args.model, "warm", 64, args.thinking)
+        out["c4"] = c4(args.base_url, args.model, 256, args.thinking)
         print(f"c4: {out['c4']}", flush=True)
     print(json.dumps(out, indent=2))
 

@@ -153,5 +153,59 @@
     "decode_impact": "135.3 vs 136.25 median \u2014 within noise",
     "prefill_impact": "8k cold: 2156 tok/s; 32k cold: 2102 tok/s, clock held 2171-2177 sustained; vs ~950 measured pre-cleanup. Lock+cleanup combined win; isolated attribution not measured. lgc 2400 tested: same 2103 tok/s at +26% power \u2014 2200 is the sweet spot",
     "note": "TP2 0731 prefill baseline 1576 tok/s now beaten by TP4: 2102+"
+  },
+  "thinking_off_vs_low_20260816": {
+    "protocol": "bench-depth.py --max-tokens 512 --n 2 --skip-c4, temp 0, prose-summary task, cluster idle, clock locked 2200; thinking off vs low (reasoning_effort)",
+    "c1_decode_tok_s": {
+      "5023_tok": {
+        "off": {
+          "median": 89.18,
+          "trials": [
+            71.33,
+            89.18
+          ]
+        },
+        "low": {
+          "median": 81.71,
+          "trials": [
+            78.19,
+            81.71
+          ]
+        }
+      },
+      "10028_tok": {
+        "off": {
+          "median": 72.21,
+          "trials": [
+            66.14,
+            72.21
+          ]
+        },
+        "low": {
+          "median": 73.28,
+          "trials": [
+            68.68,
+            73.28
+          ]
+        }
+      },
+      "49808_tok": {
+        "off": {
+          "median": 66.59,
+          "trials": [
+            64.93,
+            66.59
+          ]
+        },
+        "low": {
+          "median": 73.94,
+          "trials": [
+            71.21,
+            73.94
+          ]
+        }
+      }
+    },
+    "note": "off wins 5k, tie 10k, low wins 50k. n=2 per cell, \u00b15-8 noise. Off-state numbers are higher than the 08-15 prose probes (56-64) thanks to the fabric cleanup + clock lock."
   }
 }

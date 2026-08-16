@@ -376,3 +376,21 @@ logs/                        bench logs + incident diagnoses
 ```bash
 python3 -m unittest discover -s catchup -v
 ```
+
+---
+
+## Thinking off vs thinking low (C1, 5k / 10k / 50k)
+
+![thinking off vs low](results/thinking-off-vs-low-2026-08-16.png)
+
+| prompt depth | thinking off | thinking low |
+|---|---:|---:|
+| 5k (5,023 tok) | **89.2** | 81.7 |
+| 10k (10,028 tok) | 72.2 | **73.3** |
+| 50k (49,808 tok) | 66.6 | **73.9** |
+
+C1 client-wall decode tok/s, 512-token completions, temp 0, prose-summary
+task, n=2 medians per cell (±5–8 noise), cluster idle, clock locked 2200.
+Measured 2026-08-16 with `scripts/bench-depth.py --thinking off|low`.
+Off wins at 5k, ties at 10k, and thinking-low pulls ahead at 50k — depth
+shifts the crossover, so quote thinking state with any decode number.
