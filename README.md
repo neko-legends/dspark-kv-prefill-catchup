@@ -1,16 +1,57 @@
 # spark-bench
 
-*(formerly `dspark-kv-prefill-catchup` — renamed 2026-08-16; the serving
-recipe, fabric runbooks, boot gate, and bench archive outgrew the old name.
-The catch-up sidecar below is still here and still the point of the warm
-cache — it's just not the whole repo anymore.)*
+**Run a big AI model on four small NVIDIA boxes — fast — and (optionally)
+keep it caught up with your chat so switching to it feels instant.**
 
-Two things in one repo:
+In plain English: this repo is a working recipe — plus everything we learned
+the hard way — for running the DeepSeek V4 Flash model across four NVIDIA
+DGX Spark mini-PCs, wired together with fast cables so they act like one big
+GPU. Measured on our cluster: it writes answers at **~136 tokens/second** for
+one person (peaks of 145), reads long prompts at **~2,100 tokens/second**,
+and serves four people at once at **~182 tokens/second** combined. (A token
+is about ¾ of a word, so 136 tok/s is faster than anyone reads.)
+
+There is also an optional extra: a small *catch-up helper* that quietly keeps
+the local model up to date with your ongoing conversation while you chat on a
+hosted model. When you switch to your own boxes, the first reply starts
+instantly instead of the model re-reading the whole conversation first.
+
+**You don't need the optional part.** The four-box serving recipe works
+completely on its own — nothing fails, nothing is missing. Without the
+helper, the only difference is that the first message after switching models
+takes as long as a normal long-prompt read (seconds to minutes for very long
+chats) instead of starting instantly. The helper needs a small bridge in your
+chat software (`docs/BRIDGES.md`) to be useful.
+
+### The 60-second glossary
+
+| Term | Plain meaning |
+|---|---|
+| token | A chunk of a word (~¾ of one). The unit models read and write. |
+| prefill ("reading") | The model reading your whole message before it can answer. Slow for long chats. |
+| decode ("writing") | The model writing its answer word by word. This is the speed you actually feel. |
+| TP=4 | Four machines each hold ¼ of the model and confer on every word, over fast cables. |
+| KV / prefix cache | The model's short-term memory of your conversation. |
+| warming | Pre-loading that memory ahead of time, so the next answer starts instantly. |
+| speculative decoding (MTP) | The model drafts several words ahead and keeps the good ones — about 3× faster writing. |
+| tok/s | Tokens per second. ~100 tok/s reads back faster than most people type. |
+| RoCE / fabric | The fast cables + switch the four boxes use to talk. Getting this right matters more than any software setting. |
+
+*(formerly `dspark-kv-prefill-catchup` — renamed 2026-08-16; the serving
+recipe, fabric runbooks, boot gate, and bench archive outgrew the old name.)*
+
+---
+
+## For engineers: what's in here
 
 1. **Stand up** DeepSeek V4 Flash (abliterated NVFP4) as one TP=4 vLLM world
    on four NVIDIA DGX Sparks.
-2. **Keep an agent transcript warm** in that world's prefix cache so flipping
-   to the local model is decode-only.
+2. *(Optional)* **Keep an agent transcript warm** in that world's prefix cache
+   so flipping to the local model is decode-only.
+
+Part 1 stands alone. The catch-up sidecar in part 2 is a pure **client** of
+the vLLM API — the serving stack never references it, nothing fails without
+it, and the health gate does not check it.
 
 The serving recipe is why the sidecar is worth running. The sidecar is why a
 day of chat on a fast hosted model can still land on Sparks without a
@@ -21,14 +62,23 @@ abliterated NVFP4 32-32 checkpoint, not stock official 0731.
 
 ---
 
-## Catch-up in one page
+## Catch-up in one page (optional add-on)
 
-You chat on grok / kimi / flash-fast all day. After every turn, and after
-every compact, a tiny sidecar POSTs the **exact** OpenAI body the local
-engine will see later, with `max_tokens=1`. vLLM prefix-caches it.
+**The problem:** after a long chat, switching to your local model means it
+must re-read the whole conversation before answering — seconds to minutes of
+waiting.
 
-When you switch to `sparks/auto` (or any pin of that engine), the prompt is
-already KV. TTFT is decode, not a 150k–330k prefill.
+**The trick:** while you chat on a hosted model (grok / kimi / anything),
+a tiny helper sends each new message to your local model in the background,
+asking for just a one-word reply. That is enough to make the local model
+read along and keep the conversation in its short-term memory. When you
+switch, it has already read everything — the answer starts instantly.
+
+**In engineer terms:** after every turn (and every compact), the sidecar
+POSTs the exact OpenAI body the local engine will see later, with
+`max_tokens=1`. vLLM prefix-caches it. When you switch to `sparks/auto` (or
+any pin of that engine), the prompt is already KV — TTFT is decode, not a
+150k–330k prefill.
 
 ```text
 you finish a turn on any model
