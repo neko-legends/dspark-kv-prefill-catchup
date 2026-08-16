@@ -91,6 +91,19 @@ compose_on "${HOSTS[0]}" 0 "${IPS[0]}" "" "${GID[${HOSTS[0]}]}" "up -d"
 echo "Waiting for $API_URL ..."
 for i in $(seq 1 "$WAIT_ATTEMPTS"); do
   if curl -fsS --max-time 5 "$API_URL" >/dev/null 2>&1; then
+    echo "API is up - running serving-shape gate..."
+    metrics="$(curl -fsS --max-time 8 "http://127.0.0.1:${VLLM_PORT:-18888}/metrics" 2>/dev/null || true)"
+    if ! grep -q '^vllm:spec_decode_num_drafts_total' <<<"$metrics"; then
+      echo "GATE FAIL: no spec-decode counters (wrong image/entrypoint?). Stopping all ranks; auto-restart stays DISARMED." >&2
+      for host in "${HOSTS[@]}"; do
+        on_host "$host" "docker stop ${PROJECT_NAME}-vllm-dspark-1 >/dev/null 2>&1 || true"
+      done
+      exit 1
+    fi
+    echo "Gate OK (speculative decoding live). Arming auto-restart..."
+    for host in "${HOSTS[@]}"; do
+      on_host "$host" "docker update --restart=unless-stopped ${PROJECT_NAME}-vllm-dspark-1 >/dev/null"
+    done
     echo "TP-4 is up: $API_URL"
     curl -fsS --max-time 5 "$API_URL" || true
     exit 0
