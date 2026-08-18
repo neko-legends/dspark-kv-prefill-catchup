@@ -1,5 +1,11 @@
 # spark-bench
 
+## Latest cluster dashboard — 2026-08-18
+
+![Four-node DGX Spark cluster dashboard showing live inference performance](docs/images/spark-dashboard-overview.png)
+
+*Updated August 18, 2026. This dashboard is a modified version of [MiaAI-Lab's sparkDash](https://github.com/MiaAI-Lab/sparkDash).*
+
 **Run a big AI model on four small NVIDIA boxes — fast — and (optionally)
 keep it caught up with your chat so switching to it feels instant.**
 
@@ -13,12 +19,6 @@ is about ¾ of a word, so 136 tok/s is faster than anyone reads.)
 That headline is the *best case* — short prompt, code output. Regular chat
 at real conversation depths runs ~66–93 tok/s; see
 [the honest map](#the-honest-map-what-speed-you-actually-get) below.
-
-## Cluster dashboard
-
-![Four-node DGX Spark cluster dashboard showing live inference performance](docs/images/spark-dashboard-overview.png)
-
-*This dashboard is a modified version of [MiaAI-Lab's sparkDash](https://github.com/MiaAI-Lab/sparkDash).*
 
 ![C1 decode: TP2 baseline, broken boot, old record, and now](results/c1-decode-journey-2026-08-16.png)
 
