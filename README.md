@@ -14,6 +14,12 @@ That headline is the *best case* — short prompt, code output. Regular chat
 at real conversation depths runs ~66–93 tok/s; see
 [the honest map](#the-honest-map-what-speed-you-actually-get) below.
 
+## Cluster dashboard
+
+![Four-node DGX Spark cluster dashboard showing live inference performance](docs/images/spark-dashboard-overview.png)
+
+*This dashboard is a modified version of [MiaAI-Lab's sparkDash](https://github.com/MiaAI-Lab/sparkDash).*
+
 ![C1 decode: TP2 baseline, broken boot, old record, and now](results/c1-decode-journey-2026-08-16.png)
 
 *One day of fixing (2026-08-15 → 08-16): from a misconfigured boot where
