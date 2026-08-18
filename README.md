@@ -402,15 +402,6 @@ python3 -m unittest discover -s catchup -v
 
 ---
 
-## Thinking off vs thinking low (C1, 5k / 10k / 50k)
-
-![thinking off vs low](results/thinking-off-vs-low-2026-08-16.png)
-
-| prompt depth | off | low | high | max |
-|---|---:|---:|---:|---:|
-| 5k (~5.1k tok) | **89.2** | 81.7 | 69.0 | 69.4 |
-| 10k (~10.1k tok) | 72.2 | **73.3** | 68.4 | 69.4 |
-| 50k (~49.9k tok) | 66.6 | **73.9** | 62.7 | 70.1 |
 
 C1 client-wall decode tok/s, 512-token completions, temp 0, prose-summary
 task, n=2 medians per cell (±5–8 noise), cluster idle, clock locked 2200.
