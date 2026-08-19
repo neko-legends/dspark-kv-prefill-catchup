@@ -4,7 +4,9 @@
 
 ![Four-node DGX Spark cluster dashboard showing live inference performance](docs/images/spark-dashboard-overview.png)
 
-*Updated August 18, 2026. This dashboard is a modified version of [MiaAI-Lab's sparkDash](https://github.com/MiaAI-Lab/sparkDash).*
+![Four-node DGX Spark cluster dashboard running six active sequences at about 230 generation tokens per second](docs/images/spark-dashboard-six-sequences-230-tps.png)
+
+*Six active sequences: 229.9 aggregate generation tok/s (~230 tok/s). Updated August 18, 2026. These dashboards are modified versions of [MiaAI-Lab's sparkDash](https://github.com/MiaAI-Lab/sparkDash).*
 
 **Run a big AI model on four small NVIDIA boxes — fast — and (optionally)
 keep it caught up with your chat so switching to it feels instant.**
