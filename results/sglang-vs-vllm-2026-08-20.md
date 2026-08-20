@@ -63,3 +63,27 @@ constraints; fabric verified healthy on vLLM (canonical bench env) at ~04:45.
    changed to the canonical `.env.dspark.tp4.railb-200g.bench`; verified via
    compose config interpolation (correct image + model path). Explicit
    ENV_FILE= overrides still win.
+
+## NCCL dual-rail busbw test (4-node allreduce, torch, per-node GID resolution, 2026-08-20 ~19:15)
+Fabric briefly down for the test (GPU memory), restored + gate passed after.
+
+| config | 8MB busbw | 64MB busbw | 256MB busbw |
+|---|---|---|---|
+| rail B only (current serving) | 7.4 GB/s | 11.1 GB/s | 10.3 GB/s |
+| rail A only | 7.3 GB/s | 13.5 GB/s | — |
+| **dual-rail (A+B)** | 7.2 GB/s | **23.1 GB/s** | 14.9 GB/s |
+
+**Verdict**: dual-rail delivers ~2.1× busbw at 64MB (23.1 vs 11.1 GB/s) — the
+interconnect upgrade is real. Rail A is fully healthy under concurrent 4-node
+load (new switch fixed the PFC issue). 256MB degraded on both configs (likely
+perftest/QP tuning, not the rail).
+
+**Blocker for serving adoption**: vLLM compose hardcodes single-rail env
+(NCCL_IB_HCA=roceP2p1s0f1, NCCL_SOCKET_IFNAME=enP2p1s0f1np1). Switching to
+dual-rail needs: both HCAs + both IFNAMEs + per-node GID resolution handling
+(start script resolves ONE gid per host; dual-rail needs valid GID on BOTH
+devices — worked with NCCL_IB_GID_INDEX=auto in the test, and auto is safe
+now that the ulimit issue was the real failure cause).
+
+Also learned: NCCL test containers NEED --ulimit memlock=-1 (pinning) — the
+"unhandled system error"/proxy Connect failures were missing ulimits, not GIDs.
