@@ -87,3 +87,19 @@ now that the ulimit issue was the real failure cause).
 
 Also learned: NCCL test containers NEED --ulimit memlock=-1 (pinning) — the
 "unhandled system error"/proxy Connect failures were missing ulimits, not GIDs.
+
+## Dual-rail serving config — LIVE (2026-08-20 evening)
+- New env: `.env.dspark.tp4.railab-dual.bench` (rail-B bench + dual HCA/IFNAME);
+  start script auto-uses `NCCL_IB_GID_INDEX=auto` when the HCA list has 2+
+  devices (single-HCA keeps per-node IP resolution).
+- Verified live: gate passed, smoke OK, kv-catchup restored.
+  Decode bench (C1-style, 1024 tok): client_wall mean **114.19 tok/s**
+  (trials 101.6/117.7/123.2) vs rail-B baseline 102.5 — **+11% decode**.
+- Rollback: `ENV_FILE=.env.dspark.tp4.railb-200g.bench bash start-dspark-tp4.sh`.
+
+## Correction log
+- 2026-08-20 pm: retracted "new switch healed rail A" (Jun confirmed same switch).
+  Rail A passing concurrent 4-node load today is verified/reproducible; the
+  cause of its Aug-15 PFC failure is unverified (same re-enumeration/reboot
+  family as GID drift is the working hypothesis).
+- Units: 23.1 GB/s busbw = ~185 Gb/s (×8). Switch UI shows Gb/s.
