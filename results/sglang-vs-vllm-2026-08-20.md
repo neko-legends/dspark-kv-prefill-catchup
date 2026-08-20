@@ -49,3 +49,17 @@ constraints; fabric verified healthy on vLLM (canonical bench env) at ~04:45.
 - The aarch64 pip route (sglang 0.5.17 + sgl-kernel 0.3.21 + torch cu130) is a
   dead end: sgl-kernel wheel is cu12-built (libnvrtc.so.12 / c10 ABI mismatch).
   Use the docker image.
+
+## Post-mission corrections (2026-08-20 morning, Jun-reviewed)
+1. **GID "latent fragility" retracted** — vLLM's start-dspark-tp4.sh already
+   resolves NCCL_IB_GID_INDEX per host at launch (resolve_gid scans each node's
+   GID table for the RoCE v2 entry matching its rail IP). Running containers
+   verified: forge/anvil=3, ember/flame=5 — correct per-node despite the drift.
+   No env change needed; the script's IP-pinned discovery is stricter than
+   NCCL_IB_GID_INDEX=auto.
+2. **Real fix applied**: the start script's DEFAULT env file was the stale
+   `.env.dspark.tp4` (wrong image aidendle94/sparkrun, wrong model ref) — the
+   exact trap that cost a failed rollback attempt during the mission. Default
+   changed to the canonical `.env.dspark.tp4.railb-200g.bench`; verified via
+   compose config interpolation (correct image + model path). Explicit
+   ENV_FILE= overrides still win.
