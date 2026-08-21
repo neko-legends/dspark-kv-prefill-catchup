@@ -103,3 +103,33 @@ Also learned: NCCL test containers NEED --ulimit memlock=-1 (pinning) — the
   cause of its Aug-15 PFC failure is unverified (same re-enumeration/reboot
   family as GID drift is the working hypothesis).
 - Units: 23.1 GB/s busbw = ~185 Gb/s (×8). Switch UI shows Gb/s.
+
+---
+
+## C1 formal same-day A/B: dual-rail vs rail-B (2026-08-21) — CORRECTION
+
+Formal re-bench of the 2026-08-20 casual result (+11%, n=3). Same day, same
+method, warmup + n=10 single-stream 2048-tok decode, contaminated trials
+(foreign agent traffic, success_delta ≠ 1) dropped by the harness.
+
+| config | n | mean | median | sd | min | max |
+|---|---|---|---|---|---|---|
+| dual-rail (A+B) | 9 | 122.96 | 124.07 | 4.32 | 114.33 | 128.62 |
+| rail-B only | 14 | 122.43 | 119.81 | 4.74 | 116.64 | 130.04 |
+
+**Delta: +0.4% mean, +3.6% median. The +11% claim from 2026-08-20 does NOT
+hold under formal conditions — it was noise (n=3, cross-day, cache state).**
+
+Caveats, honestly labeled:
+- rail-B n=14 pooled from two runs (first run aborted at meas 8 on cluster-busy;
+  one concurrency-crushed trial at 21 tok/s excluded as a clear outlier).
+- Foreign traffic bursts (other agents via eva-core) contaminate both legs;
+  dropped trials bias toward quiet windows in both configs equally.
+- Single-stream decode at concurrency 1 is a light NCCL load; the busbw 2.1×
+  advantage at 64MB+ transfers (2026-08-20 table above) doesn't translate to
+  this workload. Expect dual-rail to matter at higher concurrency / batch.
+
+Decision: dual-rail stays canonical — the redundancy + headroom argument
+stands independent of decode gain — but the honest decode number is
+"~1-4%, within noise", not +11%. Reverted the +11% framing above to
+historical context.
